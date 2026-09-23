@@ -9,7 +9,7 @@ app = FastAPI(
 
 @app.get("/health")
 def health_check():
-    return {
+    return { 
         "status": "ok",
         "service": "grace-predict-ml",
     }
