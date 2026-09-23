@@ -1,0 +1,13 @@
+# Environment variables
+.env
+
+# Python
+**/__pycache__/
+**/.pytest_cache/
+backend/python-ml/.venv/
+
+# Go
+backend/go-api/bin/
+
+# OS / editor
+.DS_Store

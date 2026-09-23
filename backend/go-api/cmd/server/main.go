@@ -1,12 +1,15 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/OmaleGrace/Grace-Predict/internal/database"
 	"github.com/OmaleGrace/Grace-Predict/internal/handlers"
+	"github.com/OmaleGrace/Grace-Predict/internal/migrations"
 	"github.com/joho/godotenv"
 )
 
@@ -15,6 +18,20 @@ func main() {
 	if err := godotenv.Load("../../.env"); err != nil {
 		log.Println("No .env file found; using environment variables")
 	}
+
+	// Connect to PostgreSQL.
+	db, err := database.Connect()
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer db.Close()
+
+	log.Println("Connected to PostgreSQL")
+	if err := migrations.Run(context.Background(), db); err != nil {
+		log.Fatal(err)
+	}
+
+	log.Println("Database migrations completed")
 
 	mlServiceURL := os.Getenv("ML_SERVICE_URL")
 	if mlServiceURL == "" {
@@ -32,6 +49,7 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprintln(w, `{"status":"ok","service":"grace-predict-api"}`)
 	})
+
 
 	predictionHandler := handlers.NewPredictionHandler(mlServiceURL)
 
