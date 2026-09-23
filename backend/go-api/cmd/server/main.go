@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/OmaleGrace/Grace-Predict/internal/auth"
 	"github.com/OmaleGrace/Grace-Predict/internal/database"
 	"github.com/OmaleGrace/Grace-Predict/internal/handlers"
 	"github.com/OmaleGrace/Grace-Predict/internal/migrations"
@@ -50,9 +51,24 @@ func main() {
 		fmt.Fprintln(w, `{"status":"ok","service":"grace-predict-api"}`)
 	})
 
-
 	predictionHandler := handlers.NewPredictionHandler(mlServiceURL)
 
+	authHandler := handlers.NewAuthHandler(db)
+
+	mux.HandleFunc(
+		"/api/auth/register",
+		authHandler.Register,
+	)
+
+	mux.HandleFunc(
+		"/api/auth/login",
+		authHandler.Login,
+	)
+
+	mux.Handle(
+		"/api/auth/me",
+		auth.RequireAuth(http.HandlerFunc(authHandler.Me)),
+	)
 	mux.HandleFunc(
 		"/api/predict/test",
 		predictionHandler.TestPrediction,
