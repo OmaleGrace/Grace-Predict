@@ -11,3 +11,5 @@ backend/go-api/bin/
 
 # OS / editor
 .DS_Store
+
+uploads/

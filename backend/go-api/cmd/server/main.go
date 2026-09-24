@@ -55,6 +55,12 @@ func main() {
 
 	authHandler := handlers.NewAuthHandler(db)
 
+	datasetHandler := handlers.NewDatasetHandler(
+	db,
+	mlServiceURL,
+	"uploads",
+)
+
 	mux.HandleFunc(
 		"/api/auth/register",
 		authHandler.Register,
@@ -69,9 +75,33 @@ func main() {
 		"/api/auth/me",
 		auth.RequireAuth(http.HandlerFunc(authHandler.Me)),
 	)
+
+	mux.HandleFunc("/api/datasets", func(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case http.MethodGet:
+		auth.RequireAuth(http.HandlerFunc(datasetHandler.List)).ServeHTTP(w, r)
+
+	case http.MethodPost:
+		auth.RequireAuth(http.HandlerFunc(datasetHandler.Create)).ServeHTTP(w, r)
+
+	default:
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+	}
+})
+
+	mux.Handle(
+	"/api/datasets/upload",
+	auth.RequireAuth(http.HandlerFunc(datasetHandler.Upload)),
+)
+
 	mux.HandleFunc(
 		"/api/predict/test",
 		predictionHandler.TestPrediction,
+	)
+
+	mux.HandleFunc(
+		"/api/datasets/inspect",
+		predictionHandler.InspectDataset,
 	)
 
 	server := &http.Server{
