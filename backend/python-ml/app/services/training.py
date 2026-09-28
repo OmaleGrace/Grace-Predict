@@ -87,6 +87,7 @@ def _detect_task(y: pd.Series):
 def train_model(
     file_path: str,
     target_column: str,
+    model_id: str | None = None,
 ):
     try:
         df = pd.read_csv(file_path)
@@ -202,7 +203,10 @@ def train_model(
             ),
         }
 
-    model_id = str(uuid.uuid4())
+    # Use supplied model ID when provided.
+    # Otherwise generate one automatically.
+    if model_id is None:
+        model_id = str(uuid.uuid4())
 
     model_path = MODEL_DIR / f"{model_id}.joblib"
 

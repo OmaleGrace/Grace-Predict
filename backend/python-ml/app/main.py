@@ -17,6 +17,7 @@ app = FastAPI(
 class TrainRequest(BaseModel):
     file_path: str
     target_column: str
+    model_id: str | None = None
 
 
 class PredictRequest(BaseModel):
@@ -87,6 +88,7 @@ def train(request: TrainRequest):
         return train_model(
             request.file_path,
             request.target_column,
+            request.model_id,
         )
     except ValueError as e:
         raise HTTPException(

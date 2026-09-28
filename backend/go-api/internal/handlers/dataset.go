@@ -10,8 +10,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/OmaleGrace/Grace-Predict/internal/auth"
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -119,7 +121,7 @@ func (h *DatasetHandler) List(w http.ResponseWriter, r *http.Request) {
 			filePath    *string
 			rowCount    *int
 			columnCount *int
-			createdAt   interface{}
+			createdAt   time.Time
 		)
 
 		if err := rows.Scan(
@@ -176,6 +178,7 @@ func (h *DatasetHandler) Upload(w http.ResponseWriter, r *http.Request) {
 
 	name := strings.TrimSpace(r.FormValue("name"))
 	description := strings.TrimSpace(r.FormValue("description"))
+	targetColumn := strings.TrimSpace(r.FormValue("target_column"))
 
 	if name == "" {
 		name = strings.TrimSuffix(header.Filename, filepath.Ext(header.Filename))
@@ -187,7 +190,11 @@ func (h *DatasetHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	}
 
 	safeFilename := filepath.Base(header.Filename)
-	filePath := filepath.Join(h.UploadDir, safeFilename)
+
+	fileID := uuid.New().String()
+	storedFilename := fileID + "_" + safeFilename
+
+	filePath := filepath.Join(h.UploadDir, storedFilename)
 
 	diskFile, err := os.Create(filePath)
 	if err != nil {
@@ -272,22 +279,23 @@ func (h *DatasetHandler) Upload(w http.ResponseWriter, r *http.Request) {
 		r.Context(),
 		`
 		INSERT INTO datasets (
-			user_id,
-			name,
-			description,
-			file_path,
-			row_count,
-			column_count
-		)
-		VALUES ($1, $2, $3, $4, $5, $6)
-		RETURNING id
+	user_id,
+	name,
+	description,
+	file_path,
+	target_column,
+	row_count,
+	column_count
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 		`,
 		userID,
-		name,
-		description,
-		filePath,
-		inspection.Rows,
-		inspection.Columns,
+name,
+description,
+filePath,
+targetColumn,
+inspection.Rows,
+inspection.Columns,
 	).Scan(&datasetID)
 
 	if err != nil {
@@ -299,11 +307,12 @@ func (h *DatasetHandler) Upload(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusCreated)
 
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":             datasetID,
-		"name":           name,
-		"filename":       inspection.Filename,
-		"rows":           inspection.Rows,
-		"columns":        inspection.Columns,
-		"column_details": inspection.ColumnDetails,
-	})
+	"id":             datasetID,
+	"name":           name,
+	"filename":       inspection.Filename,
+	"target_column":  targetColumn,
+	"rows":           inspection.Rows,
+	"columns":        inspection.Columns,
+	"column_details": inspection.ColumnDetails,
+})
 }

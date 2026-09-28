@@ -5,6 +5,7 @@
 **/__pycache__/
 **/.pytest_cache/
 backend/python-ml/.venv/
+backend/python-ml/app/models/
 
 # Go
 backend/go-api/bin/

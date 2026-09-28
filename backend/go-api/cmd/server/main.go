@@ -11,6 +11,7 @@ import (
 	"github.com/OmaleGrace/Grace-Predict/internal/database"
 	"github.com/OmaleGrace/Grace-Predict/internal/handlers"
 	"github.com/OmaleGrace/Grace-Predict/internal/migrations"
+	"github.com/OmaleGrace/Grace-Predict/internal/models"
 	"github.com/joho/godotenv"
 )
 
@@ -51,15 +52,26 @@ func main() {
 		fmt.Fprintln(w, `{"status":"ok","service":"grace-predict-api"}`)
 	})
 
-	predictionHandler := handlers.NewPredictionHandler(mlServiceURL)
-
+	modelRepository := models.NewRepository(db)
+	predictionHandler := handlers.NewPredictionHandler(
+		mlServiceURL,
+		modelRepository,
+	)
 	authHandler := handlers.NewAuthHandler(db)
 
+	modelHandler := handlers.NewModelHandler(
+		modelRepository,
+	)
+
+	historyHandler := handlers.NewHistoryHandler(
+		modelRepository,
+	)
+
 	datasetHandler := handlers.NewDatasetHandler(
-	db,
-	mlServiceURL,
-	"uploads",
-)
+		db,
+		mlServiceURL,
+		"uploads",
+	)
 
 	mux.HandleFunc(
 		"/api/auth/register",
@@ -76,23 +88,36 @@ func main() {
 		auth.RequireAuth(http.HandlerFunc(authHandler.Me)),
 	)
 
-	mux.HandleFunc("/api/datasets", func(w http.ResponseWriter, r *http.Request) {
-	switch r.Method {
-	case http.MethodGet:
-		auth.RequireAuth(http.HandlerFunc(datasetHandler.List)).ServeHTTP(w, r)
-
-	case http.MethodPost:
-		auth.RequireAuth(http.HandlerFunc(datasetHandler.Create)).ServeHTTP(w, r)
-
-	default:
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
-	}
-})
+	mux.Handle(
+		"/api/predict",
+		auth.RequireAuth(
+			http.HandlerFunc(predictionHandler.Predict),
+		),
+	)
 
 	mux.Handle(
-	"/api/datasets/upload",
-	auth.RequireAuth(http.HandlerFunc(datasetHandler.Upload)),
-)
+		"/api/predictions/history",
+		auth.RequireAuth(
+			http.HandlerFunc(historyHandler.List),
+		),
+	)
+	mux.HandleFunc("/api/datasets", func(w http.ResponseWriter, r *http.Request) {
+		switch r.Method {
+		case http.MethodGet:
+			auth.RequireAuth(http.HandlerFunc(datasetHandler.List)).ServeHTTP(w, r)
+
+		case http.MethodPost:
+			auth.RequireAuth(http.HandlerFunc(datasetHandler.Create)).ServeHTTP(w, r)
+
+		default:
+			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		}
+	})
+
+	mux.Handle(
+		"/api/datasets/upload",
+		auth.RequireAuth(http.HandlerFunc(datasetHandler.Upload)),
+	)
 
 	mux.HandleFunc(
 		"/api/predict/test",
@@ -102,6 +127,35 @@ func main() {
 	mux.HandleFunc(
 		"/api/datasets/inspect",
 		predictionHandler.InspectDataset,
+	)
+
+	mux.Handle(
+		"/api/models",
+		auth.RequireAuth(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.Method {
+				case http.MethodGet:
+					modelHandler.List(w, r)
+
+				case http.MethodPost:
+					modelHandler.Create(w, r)
+
+				default:
+					http.Error(
+						w,
+						"method not allowed",
+						http.StatusMethodNotAllowed,
+					)
+				}
+			}),
+		),
+	)
+
+	mux.Handle(
+		"/api/models/{id}",
+		auth.RequireAuth(
+			http.HandlerFunc(modelHandler.Get),
+		),
 	)
 
 	server := &http.Server{
