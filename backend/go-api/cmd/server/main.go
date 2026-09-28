@@ -61,6 +61,7 @@ func main() {
 
 	modelHandler := handlers.NewModelHandler(
 		modelRepository,
+		mlServiceURL,
 	)
 
 	historyHandler := handlers.NewHistoryHandler(
@@ -72,7 +73,6 @@ func main() {
 		mlServiceURL,
 		"uploads",
 	)
-
 	mux.HandleFunc(
 		"/api/auth/register",
 		authHandler.Register,
@@ -127,6 +127,13 @@ func main() {
 	mux.HandleFunc(
 		"/api/datasets/inspect",
 		predictionHandler.InspectDataset,
+	)
+
+	mux.Handle(
+		"/api/models/train",
+		auth.RequireAuth(
+			http.HandlerFunc(modelHandler.Train),
+		),
 	)
 
 	mux.Handle(

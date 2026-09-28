@@ -102,6 +102,39 @@ func (r *Repository) Exists(
 	return exists, err
 }
 
+type TrainModelParams struct {
+	ID         uuid.UUID
+	DatasetID  uuid.UUID
+	Name       string
+	ModelType  string
+	TaskType   string
+	Metrics    map[string]interface{}
+	Parameters map[string]interface{}
+}
+
+func (r *Repository) GetDatasetForUser(
+	ctx context.Context,
+	datasetID uuid.UUID,
+	userID uuid.UUID,
+) (string, string, error) {
+	var filePath string
+	var targetColumn string
+
+	err := r.DB.QueryRow(
+		ctx,
+		`
+		SELECT file_path, target_column
+		FROM datasets
+		WHERE id = $1
+		  AND user_id = $2
+		`,
+		datasetID,
+		userID,
+	).Scan(&filePath, &targetColumn)
+
+	return filePath, targetColumn, err
+}
+
 func (r *Repository) List(
 	ctx context.Context,
 ) ([]Model, error) {
